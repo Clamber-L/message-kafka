@@ -1,0 +1,22 @@
+spring:
+  kafka:
+    bootstrap-servers: 10.5.51.156:9092,10.5.51.157:9092,10.5.51.159:9092
+    consumer:
+      group-id: my-group
+      enable-auto-commit: false
+      auto-offset-reset: latest
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        max.poll.records: 500
+        max.poll.interval.ms: 300000
+    listener:
+      concurrency: 3
+      # 手动确认
+      ack-mode: manual
+
+app:
+  kafka:
+    dlt-topic: ws.send.topic-dlt
