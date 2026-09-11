@@ -1,84 +1,106 @@
 package com.tr.message.websocket;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.timeout.IdleStateEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.yeauty.annotation.*;
-import org.yeauty.pojo.Session;
 
 @Slf4j
+@ChannelHandler.Sharable
 @Component
-@ServerEndpoint(path = "/ws/iot", host = "0.0.0.0", port = "8181", useCompressionHandler = "true", childOptionSoKeepalive = "true")
-public class WebSocketServer {
+public class WebSocketServer extends SimpleChannelInboundHandler<Object> {
 
-    @OnOpen
-    public void onOpen(Session session) {
+    @Value("${netty.websocket.communication}")
+    private String communication;
 
-        WebSocketHandler webSocketHandler = new WebSocketHandler();
-        webSocketHandler.put(session);
-        log.info("WebSocket连接成功 --->  已连接, 总连接数:{}", WebSocketHandler.channelGroup.size());
-        session.sendText("WEBSOCKET-CONNECT-SUCCESS");
+    @Value("${netty.websocket.path}")
+    private String websocketPath;
+
+    private final WebSocketHandler webSocketHandler = new WebSocketHandler();
+
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) {
+        webSocketHandler.put(ctx.channel());
+        log.info("WebSocket连接成功, 总连接数:{}", WebSocketHandler.channelGroup.size());
+        WebSocketHandler.sendMessageToUserByText(ctx.channel(), "WEBSOCKET-CONNECT-SUCCESS");
     }
 
-    @OnClose
-    public void onClose(Session session) {
-        if (session.isOpen()) {
-            // 关闭连接
-            session.close();
-        }
-
-        WebSocketHandler.remove(session);
-        log.warn("WebSocket关闭连接 ---> , 总连接数:{}", WebSocketHandler.channelGroup.size());
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) {
+        WebSocketHandler.remove(ctx.channel());
+        log.warn("WebSocket关闭连接, 总连接数:{}", WebSocketHandler.channelGroup.size());
     }
 
-    @OnError
-    public void onError(Session session, Throwable exception) {
-        if (session.isOpen()) {
-            // 关闭连接
-            session.close();
-        }
-        if (exception != null) {
-            log.warn("WebSocket连接异常 --->  连接异常 异常信息 - {}", exception.getMessage());
-        }
-
-        WebSocketHandler.remove(session);
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        log.warn("WebSocket连接异常: {}", cause.getMessage());
+        WebSocketHandler.remove(ctx.channel());
     }
 
-    @OnMessage
-    public void onMessage(Session session, String message) {
-        //消息回传，保持连接
-        if ("ping".equalsIgnoreCase(message)) {
-            WebSocketHandler.sendMessageToUserByText(session, "pong");
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
+        if (msg instanceof FullHttpRequest request) {
+            handleHttpRequest(ctx, request);
+        } else if (msg instanceof WebSocketFrame frame) {
+            handleWebSocketFrame(ctx, frame);
         }
     }
 
-    @OnBinary
-    public void onBinary(Session session, byte[] bytes) {
-        for (byte b : bytes) {
-            log.debug("onBinary : {}", String.valueOf(b));
+    private void handleHttpRequest(ChannelHandlerContext ctx, FullHttpRequest request) {
+        WebSocketServerHandshakerFactory factory = new WebSocketServerHandshakerFactory(
+                communication + "://" + request.headers().get(HttpHeaderNames.HOST) + websocketPath,
+                null, true
+        );
+        WebSocketServerHandshaker handshaker = factory.newHandshaker(request);
+        if (handshaker == null) {
+            WebSocketServerHandshakerFactory.sendUnsupportedVersionResponse(ctx.channel());
+        } else {
+            handshaker.handshake(ctx.channel(), request);
         }
-        session.sendBinary(bytes);
     }
 
-    @OnEvent
-    public void onEvent(Session session, Object evt, @RequestParam String userId) {
-        if (evt instanceof IdleStateEvent) {
-            IdleStateEvent idleStateEvent = (IdleStateEvent) evt;
-            switch (idleStateEvent.state()) {
-                case READER_IDLE:
-                    log.error("user-{} Read timeout！", userId);
-                    session.close();
-                    break;
-                case WRITER_IDLE:
-                    log.error("user-{} Write timeout！", userId);
-                    session.close();
-                    break;
-                case ALL_IDLE:
-                    log.error("user-{} All timeout！", userId);
-                    session.close();
-                    break;
-                default:
-                    break;
+    private void handleWebSocketFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
+        if (frame instanceof TextWebSocketFrame textFrame) {
+            String message = textFrame.text();
+            if ("ping".equals(message)) {
+                WebSocketHandler.sendMessageToUserByText(ctx.channel(), "pong");
+            }
+
+        } else if (frame instanceof BinaryWebSocketFrame binaryFrame) {
+            ByteBuf buf = binaryFrame.content().retain();
+            ctx.channel().writeAndFlush(new BinaryWebSocketFrame(buf));
+
+        } else if (frame instanceof CloseWebSocketFrame) {
+            ctx.close();
+
+        } else if (frame instanceof PingWebSocketFrame) {
+            ctx.channel().writeAndFlush(new PongWebSocketFrame(frame.content().retain()));
+        }
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+        if (evt instanceof IdleStateEvent idleEvent) {
+            switch (idleEvent.state()) {
+                case READER_IDLE -> {
+                    log.error("Read timeout, channel:{}", ctx.channel().id());
+                    ctx.close();
+                }
+                case WRITER_IDLE -> {
+                    log.error("Write timeout, channel:{}", ctx.channel().id());
+                    ctx.close();
+                }
+                case ALL_IDLE -> {
+                    log.error("All timeout, channel:{}", ctx.channel().id());
+                    ctx.close();
+                }
             }
         }
     }
