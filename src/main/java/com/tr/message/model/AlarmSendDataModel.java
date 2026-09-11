@@ -6,6 +6,10 @@ import java.io.Serializable;
 
 /***
  * WebSocket 推送数据 Model
+ *
+ * @author lez
+ * @date 2025/3/13 9:12
+ * @return
  **/
 @Data
 public class AlarmSendDataModel implements Serializable {
@@ -39,6 +43,11 @@ public class AlarmSendDataModel implements Serializable {
      * 设备名称
      **/
     private String deviceName;
+
+    /***
+     * 设备码
+     **/
+    private String deviceNo;
 
     /***
      * 设备型号
@@ -136,6 +145,16 @@ public class AlarmSendDataModel implements Serializable {
     private String handleResult;
 
     /***
+     * 时间异常
+     **/
+    private Boolean timeError;
+
+    /***
+     * 报警时间
+     **/
+    private String alarmTime;
+
+    /***
      * 创建时间
      **/
     private String createTime;
@@ -204,4 +223,9 @@ public class AlarmSendDataModel implements Serializable {
      * 上次误报处理原因
      **/
     private String falseAlarmHandleReasonLast;
+
+    /***
+     * 报警图片url
+     **/
+    private String alarmImageUrl;
 }

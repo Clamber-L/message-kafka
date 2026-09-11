@@ -28,10 +28,15 @@
             <scope>test</scope>
         </dependency>
 
+<!--        <dependency>-->
+<!--            <groupId>org.yeauty</groupId>-->
+<!--            <artifactId>netty-websocket-spring-boot-starter</artifactId>-->
+<!--            <version>0.9.4</version>-->
+<!--        </dependency>-->
+
         <dependency>
-            <groupId>org.yeauty</groupId>
-            <artifactId>netty-websocket-spring-boot-starter</artifactId>
-            <version>0.9.4</version>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
         </dependency>
 
         <dependency>

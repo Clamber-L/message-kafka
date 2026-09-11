@@ -56,44 +56,44 @@ public class MyKafkaConsumer {
 		this.webSocketHandler.sendMessageToMass(objectMapper.writeValueAsString(msg));
 	}
 
-	@KafkaListener(
-			topics = TopicConstants.WS_DLT_TOPIC,
-			containerFactory = "kafkaListenerContainerFactory"
-	)
-	public void consumeDtl(ConsumerRecord<String, String> record, Acknowledgment ack) {
-		try {
-			log.info("DLT Received message: {}", record.value());
-			log.info("Topic: {}, Partition: {}, Offset: {}", record.topic(), record.partition(), record.offset());
-
-			// 对于死信队列的消息，我们只记录日志，不再发送到WebSocket
-			// 可以在这里添加告警通知或人工处理逻辑
-			
-			// 记录详细的错误信息（如果在header中有）
-			if (record.headers().lastHeader("kafka_dlt-original-topic") != null) {
-				String originalTopic = new String(record.headers().lastHeader("kafka_dlt-original-topic").value());
-				log.info("Original topic: {}", originalTopic);
-			}
-			
-			if (record.headers().lastHeader("kafka_dlt-exception-message") != null) {
-				String exceptionMessage = new String(record.headers().lastHeader("kafka_dlt-exception-message").value());
-				log.info("Exception that caused DLT: {}", exceptionMessage);
-			}
-
-			// 手动提交 offset
-			ack.acknowledge();
-			log.info("DLT message acknowledged");
-		} catch (Exception e) {
-			log.error("Error processing DLT message: {}", e.getMessage(), e);
-			// 在DLT消费者中发生的异常不应再发送到DLT，避免无限循环
-			// 可以记录到专门的日志或监控系统
-			
-			// 即使处理失败也手动确认，防止阻塞
-			try {
-				ack.acknowledge();
-				log.info("DLT message acknowledged despite processing error");
-			} catch (Exception ackException) {
-				log.error("Failed to acknowledge DLT message: {}", ackException.getMessage(), ackException);
-			}
-		}
-	}
+//	@KafkaListener(
+//			topics = TopicConstants.WS_DLT_TOPIC,
+//			containerFactory = "kafkaListenerContainerFactory"
+//	)
+//	public void consumeDtl(ConsumerRecord<String, String> record, Acknowledgment ack) {
+//		try {
+//			log.info("DLT Received message: {}", record.value());
+//			log.info("Topic: {}, Partition: {}, Offset: {}", record.topic(), record.partition(), record.offset());
+//
+//			// 对于死信队列的消息，我们只记录日志，不再发送到WebSocket
+//			// 可以在这里添加告警通知或人工处理逻辑
+//
+//			// 记录详细的错误信息（如果在header中有）
+//			if (record.headers().lastHeader("kafka_dlt-original-topic") != null) {
+//				String originalTopic = new String(record.headers().lastHeader("kafka_dlt-original-topic").value());
+//				log.info("Original topic: {}", originalTopic);
+//			}
+//
+//			if (record.headers().lastHeader("kafka_dlt-exception-message") != null) {
+//				String exceptionMessage = new String(record.headers().lastHeader("kafka_dlt-exception-message").value());
+//				log.info("Exception that caused DLT: {}", exceptionMessage);
+//			}
+//
+//			// 手动提交 offset
+//			ack.acknowledge();
+//			log.info("DLT message acknowledged");
+//		} catch (Exception e) {
+//			log.error("Error processing DLT message: {}", e.getMessage(), e);
+//			// 在DLT消费者中发生的异常不应再发送到DLT，避免无限循环
+//			// 可以记录到专门的日志或监控系统
+//
+//			// 即使处理失败也手动确认，防止阻塞
+//			try {
+//				ack.acknowledge();
+//				log.info("DLT message acknowledged despite processing error");
+//			} catch (Exception ackException) {
+//				log.error("Failed to acknowledge DLT message: {}", ackException.getMessage(), ackException);
+//			}
+//		}
+//	}
 }

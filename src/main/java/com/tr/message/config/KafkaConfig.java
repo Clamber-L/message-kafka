@@ -86,7 +86,7 @@ public class KafkaConfig {
 		factory.setCommonErrorHandler(errorHandler);
 
 		// 如需批处理可启用：
-		factory.setBatchListener(true);
+		factory.setBatchListener(false);
 
 		return factory;
 	}

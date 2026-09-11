@@ -20,3 +20,17 @@ spring:
 app:
   kafka:
     dlt-topic: ws.send.topic-dlt
+
+
+netty:
+  websocket:
+    host: 0.0.0.0
+    port: 8181
+    compression: true
+    so-keepalive: true
+    path: /ws/iot
+    communication: ws
+    ssl:
+      enabled: false
+      cert-path: /path/to/cert.pem
+      key-path: /path/to/key.pem
